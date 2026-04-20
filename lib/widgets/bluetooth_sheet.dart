@@ -15,10 +15,12 @@ class BluetoothSheet extends StatefulWidget {
 class _BluetoothSheetState extends State<BluetoothSheet> {
   @override
   void initState() {
-    super.initState();  // load the bounded devices
+    super.initState(); // load the bounded devices
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      context.read<BluetoothService>().startDiscovery(); // auto scan the available devices
+      context
+          .read<BluetoothService>()
+          .startDiscovery(); // auto scan the available devices
     });
   }
 
@@ -283,7 +285,10 @@ class DeviceTile extends StatelessWidget {
               service.renameDevice(device.address, ctrl.text.trim());
               Navigator.pop(ctx);
             },
-            child: const Text('SAVE', style: TextStyle(color: AppTheme.accentRed)),
+            child: const Text(
+              'SAVE',
+              style: TextStyle(color: AppTheme.accentRed),
+            ),
           ),
         ],
       ),
