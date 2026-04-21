@@ -25,6 +25,19 @@ subprojects {
         val androidExtension = project.extensions.findByName("android")
         if (androidExtension != null) {
             val extensionClass = androidExtension.javaClass
+
+            // Force all library subprojects (e.g. flutter_bluetooth_serial) to
+            // compile against a modern SDK so AAPT can resolve attrs like lStar.
+            try {
+                val setCompileSdkMethod = extensionClass.getMethod("setCompileSdkVersion", Int::class.java)
+                setCompileSdkMethod.invoke(androidExtension, 34)
+            } catch (_: Exception) {
+                try {
+                    val setCompileSdkMethod = extensionClass.getMethod("compileSdkVersion", Int::class.java)
+                    setCompileSdkMethod.invoke(androidExtension, 34)
+                } catch (_: Exception) { /* ignore */ }
+            }
+
             try {
                 val namespaceMethod = extensionClass.getMethod("getNamespace")
                 val namespace = namespaceMethod.invoke(androidExtension) as? String
