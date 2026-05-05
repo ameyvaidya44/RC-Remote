@@ -170,7 +170,7 @@ Study these before creating new animations. Match the density, spacing, and alph
 - **Do NOT use decorative dividers** like `// ── Section ──────────...──`
 - **Do NOT add comments that restate what the code does** — e.g., `// Reset button states` before `_fwdActive = false` is obvious
 - **DO add comments that explain WHY** something is done a non-obvious way — e.g., `// Flip sign because landscape mode inverts the X axis`
-- Keep `debugPrint` calls to a minimum — only for error paths, not every command
+- **Keep `debugPrint` for command flow** — log what the user presses and what gets sent over Bluetooth (e.g., button press → `U`, voice match → `"forward"`, gyro tilt → `L`). Remove only verbose/spammy logs like per-frame sensor values or repeated status updates
 
 ### Haptic Feedback
 
