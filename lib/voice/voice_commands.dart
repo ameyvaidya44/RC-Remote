@@ -139,6 +139,7 @@ class VoiceCommandService extends ChangeNotifier {
   void _processWords(String words) {
     for (final entry in _modeEntriesBySpecificity) {
       if (words.contains(entry.key)) {
+        debugPrint('Voice Match (Mode): ${entry.key}');
         unawaited(_btService.setMode(entry.value));
         _statusMessage = 'Mode: ${entry.key}';
         notifyListeners();
@@ -148,6 +149,7 @@ class VoiceCommandService extends ChangeNotifier {
 
     for (final entry in _voiceEntriesBySpecificity) {
       if (words.contains(entry.key)) {
+        debugPrint('Voice Match (Cmd): ${entry.key}');
         unawaited(_btService.sendCommand(entry.value));
         _statusMessage = 'Command: ${entry.key}';
 

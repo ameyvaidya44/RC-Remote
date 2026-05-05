@@ -52,6 +52,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool get _gyroMode => _activeMode == 'Gyro Control';
 
   void _cmd(String command, bool down) {
+    if (down) debugPrint('Button Press: $command');
     final bt = context.read<BluetoothService>();
     bt.sendCommand(down ? command : BluetoothService.cmdStop);
   }

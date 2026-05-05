@@ -208,6 +208,7 @@ class BluetoothService extends ChangeNotifier {
 
   // Commands
   Future<void> sendCommand(String command) async {
+    debugPrint('BT Send: $command');
 
     if (_connection == null) {
       debugPrint(
