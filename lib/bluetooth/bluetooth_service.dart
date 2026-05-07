@@ -208,7 +208,7 @@ class BluetoothService extends ChangeNotifier {
 
   // Commands
   Future<void> sendCommand(String command) async {
-    debugPrint('BT Send: $command');
+    debugPrint('BluetoothService.sendCommand request: command=$command');
 
     if (_connection == null) {
       debugPrint(
@@ -223,9 +223,15 @@ class BluetoothService extends ChangeNotifier {
       return;
     }
 
+    final deviceName =
+        _connectedDevice?.name ?? _connectedDevice?.address ?? 'unknown';
+
     try {
       _connection!.output.add(Uint8List.fromList(utf8.encode('$command\n')));
       await _connection!.output.allSent;
+      debugPrint(
+        'BluetoothService.sendCommand sent: command=$command device=$deviceName',
+      );
     } catch (e) {
       debugPrint(
         'BluetoothService.sendCommand failed: command=$command error=$e',
@@ -235,6 +241,7 @@ class BluetoothService extends ChangeNotifier {
   }
 
   Future<void> setMode(RobotMode mode) async {
+    debugPrint('BluetoothService.setMode: mode=$mode');
     _currentMode = mode;
     switch (mode) {
       case RobotMode.manual:

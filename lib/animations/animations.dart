@@ -458,6 +458,9 @@ class _GyroTiltPainter extends CustomPainter {
   final double tiltY;
   final double pulse;
 
+  // Must match _gyroMax in home_screen.dart.
+  static const double _gyroMax = 7.0;
+
   const _GyroTiltPainter({
     required this.tiltX,
     required this.tiltY,
@@ -478,8 +481,23 @@ class _GyroTiltPainter extends CustomPainter {
     final startX = cx - center * _spacing;
     final startY = cy - center * _spacing;
 
-    final activeCol = (center + tiltX.clamp(-1.0, 1.0) * center).round();
-    final activeRow = (center - tiltY.clamp(-1.0, 1.0) * center).round();
+    // In landscape: X = pitch axis (forward/back), Y = roll axis (left/right).
+    // Normalize to [-1,1].
+    final normX = (tiltX / _gyroMax).clamp(-1.0, 1.0);
+    final normY = (tiltY / _gyroMax).clamp(-1.0, 1.0);
+
+    // X < 0 = forward tilt → dot moves toward top of screen → row decreases.
+    // X > 0 = backward tilt → dot moves toward bottom → row increases.
+    // Y < 0 = left tilt → dot moves left → col decreases.
+    // Y > 0 = right tilt → dot moves right → col increases.
+    final activeCol = (center + normY * center).round().clamp(0, _cols - 1);
+    final activeRow = (center + normX * center).round().clamp(0, _rows - 1);
+
+    // Intensity based on tilt magnitude so idle = dim, full tilt = bright.
+    final tiltMag = math
+        .sqrt(normX * normX + normY * normY)
+        .clamp(0.0, 1.0);
+    final centerAlpha = 0.5 + 0.5 * tiltMag + 0.15 * pulse;
 
     for (int row = 0; row < _rows; row++) {
       for (int col = 0; col < _cols; col++) {
@@ -503,14 +521,18 @@ class _GyroTiltPainter extends CustomPainter {
         Color color;
         double radius;
         if (isCenter) {
-          final alpha = (0.7 + 0.3 * pulse) * edgeFade;
+          final alpha = centerAlpha.clamp(0.0, 1.0) * edgeFade;
           color = AppTheme.accentRed.withValues(alpha: alpha);
-          radius = _dotR + 0.8;
+          radius = _dotR + 0.8 * tiltMag;
         } else if (isInner) {
-          color = AppTheme.accentRed.withValues(alpha: 0.55 * edgeFade);
+          color = AppTheme.accentRed.withValues(
+            alpha: (0.5 * tiltMag + 0.1) * edgeFade,
+          );
           radius = _dotR;
         } else if (isMid) {
-          color = AppTheme.accentRed.withValues(alpha: 0.2 * edgeFade);
+          color = AppTheme.accentRed.withValues(
+            alpha: (0.2 * tiltMag + 0.04) * edgeFade,
+          );
           radius = _dotR - 0.4;
         } else {
           final alpha = math.max(0.0, (0.18 - dist * 0.02)) * edgeFade;

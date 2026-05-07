@@ -27,11 +27,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
   double _gyroTiltX = 0.0;
   double _gyroTiltY = 0.0;
+  double _gyroSmoothedX = 0.0;
+  double _gyroSmoothedY = 0.0;
   String _lastGyroCmd = '';
+  String _gyroLabel = 'TILT TO DRIVE';
   StreamSubscription<AccelerometerEvent>? _accelSub;
 
-  static const double _gyroDeadzone = 2.5;
+  // Deadzone in m/s²; max is the saturation point for full tilt.
+  static const double _gyroDeadzone = 2.2;
   static const double _gyroMax = 7.0;
+  // Low-pass smoothing factor (0 = no smoothing, 1 = frozen).
+  static const double _gyroAlpha = 0.25;
 
   bool _fwdActive = false;
   bool _backActive = false;
@@ -131,7 +137,9 @@ class _HomeScreenState extends State<HomeScreen> {
                             Text(
                               m,
                               style: TextStyle(
-                                color: active ? AppTheme.accentRed : Colors.white,
+                                color: active
+                                    ? AppTheme.accentRed
+                                    : Colors.white,
                                 fontSize: 13,
                                 fontWeight: active
                                     ? FontWeight.w700
@@ -200,28 +208,68 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _startGyro() {
     _accelSub?.cancel();
+    _gyroSmoothedX = 0.0;
+    _gyroSmoothedY = 0.0;
     _accelSub = accelerometerEventStream().listen((event) {
       if (!mounted || !_gyroMode) return;
-      setState(() {
-        _gyroTiltX = event.x.clamp(-_gyroMax, _gyroMax);
-        _gyroTiltY = event.y.clamp(-_gyroMax, _gyroMax);
-      });
 
-      final bt = context.read<BluetoothService>();
+      // Low-pass filter: exponential moving average kills high-frequency jitter.
+      _gyroSmoothedX =
+          _gyroAlpha * event.x + (1 - _gyroAlpha) * _gyroSmoothedX;
+      _gyroSmoothedY =
+          _gyroAlpha * event.y + (1 - _gyroAlpha) * _gyroSmoothedY;
+
+      final double sx = _gyroSmoothedX.clamp(-_gyroMax, _gyroMax);
+      final double sy = _gyroSmoothedY.clamp(-_gyroMax, _gyroMax);
+
+      // Android sensor axes are in the portrait (natural) frame, not the
+      // rotated screen frame. In landscape (rotated 90° CCW, USB right):
+      //   Landscape FORWARD tilt (top long-edge away) → portrait +X dominates
+      //   Landscape FORWARD tilt (top long-edge away) → portrait -X dominates
+      //   Landscape BACKWARD tilt (top long-edge toward you) → portrait +X
+      //   Landscape LEFT  tilt (left short-edge down) → portrait -Y dominates
+      //   Landscape RIGHT tilt (right short-edge down) → portrait +Y
       String cmd = BluetoothService.cmdStop;
+      String label = 'TILT TO DRIVE';
 
-      if (_gyroTiltY.abs() > _gyroDeadzone || _gyroTiltX.abs() > _gyroDeadzone) {
-        if (_gyroTiltY.abs() > _gyroTiltX.abs()) {
-          cmd = _gyroTiltY > 0 ? BluetoothService.cmdBackward : BluetoothService.cmdForward;
+      if (sx.abs() > _gyroDeadzone || sy.abs() > _gyroDeadzone) {
+        if (sx.abs() > sy.abs()) {
+          // X dominates → pitch (forward / backward)
+          if (sx < 0) {
+            cmd = BluetoothService.cmdForward;
+            label = 'FORWARD';
+          } else {
+            cmd = BluetoothService.cmdBackward;
+            label = 'BACKWARD';
+          }
         } else {
-          cmd = _gyroTiltX > 0 ? BluetoothService.cmdLeft : BluetoothService.cmdRight;
+          // Y dominates → roll (left / right)
+          if (sy < 0) {
+            cmd = BluetoothService.cmdLeft;
+            label = 'LEFT';
+          } else {
+            cmd = BluetoothService.cmdRight;
+            label = 'RIGHT';
+          }
         }
       }
 
       if (cmd != _lastGyroCmd) {
-        bt.sendCommand(cmd);
+        context.read<BluetoothService>().sendCommand(cmd);
+        HapticFeedback.lightImpact();
         _lastGyroCmd = cmd;
+        debugPrint('HomeScreen.gyro: cmd=$cmd sx=${sx.toStringAsFixed(2)} sy=${sy.toStringAsFixed(2)}');
       }
+
+      setState(() {
+        _gyroTiltX = sx;
+        _gyroTiltY = sy;
+        _gyroLabel = label;
+        _fwdActive = cmd == BluetoothService.cmdForward;
+        _backActive = cmd == BluetoothService.cmdBackward;
+        _leftActive = cmd == BluetoothService.cmdLeft;
+        _rightActive = cmd == BluetoothService.cmdRight;
+      });
     });
   }
 
@@ -229,7 +277,19 @@ class _HomeScreenState extends State<HomeScreen> {
     _accelSub?.cancel();
     _accelSub = null;
     _lastGyroCmd = '';
+    _gyroLabel = 'TILT TO DRIVE';
+    setState(() {
+      _gyroTiltX = 0.0;
+      _gyroTiltY = 0.0;
+      _fwdActive = false;
+      _backActive = false;
+      _leftActive = false;
+      _rightActive = false;
+    });
   }
+
+  // statusMessage already contains the final display string ('FORWARD', etc.).
+  String _voiceDisplayLabel(String status) => status;
 
   @override
   Widget build(BuildContext context) {
@@ -292,7 +352,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                         _activeMode == 'Human Following') ...[
                                       const SizedBox(width: 12),
                                       _startStopButton(),
-                                    ] else if (_activeMode == 'Voice Control') ...[
+                                    ] else if (_activeMode ==
+                                        'Voice Control') ...[
                                       const SizedBox(width: 12),
                                       _voiceMicButton(),
                                     ],
@@ -453,23 +514,34 @@ class _HomeScreenState extends State<HomeScreen> {
             else
               const NormalDotAnimation(),
 
-            // Voice status text
+            // Direction / status label
             if (_gyroMode)
               Positioned(
                 bottom: 5,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: AppTheme.accentRed.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: const Text(
-                    'GYRO MODE: TILT TO DRIVE',
-                    style: TextStyle(
-                      color: AppTheme.accentRed,
-                      fontSize: 8,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.2,
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 150),
+                  child: Container(
+                    key: ValueKey(_gyroLabel),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppTheme.accentRed.withValues(
+                        alpha: _gyroLabel == 'TILT TO DRIVE' ? 0.06 : 0.15,
+                      ),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      _gyroLabel,
+                      style: TextStyle(
+                        color: AppTheme.accentRed.withValues(
+                          alpha: _gyroLabel == 'TILT TO DRIVE' ? 0.5 : 1.0,
+                        ),
+                        fontSize: 8,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.2,
+                      ),
                     ),
                   ),
                 ),
@@ -478,19 +550,26 @@ class _HomeScreenState extends State<HomeScreen> {
                 voiceService.statusMessage.isNotEmpty)
               Positioned(
                 bottom: 5,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: AppTheme.accentRed.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    voiceService.statusMessage.toUpperCase(),
-                    style: const TextStyle(
-                      color: AppTheme.accentRed,
-                      fontSize: 8,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.2,
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  child: Container(
+                    key: ValueKey(voiceService.statusMessage),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppTheme.accentRed.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      _voiceDisplayLabel(voiceService.statusMessage),
+                      style: const TextStyle(
+                        color: AppTheme.accentRed,
+                        fontSize: 8,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.2,
+                      ),
                     ),
                   ),
                 ),
@@ -618,7 +697,9 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             child: Icon(
               voiceService.isListening ? Icons.mic : Icons.mic_none,
-              color: voiceService.isListening ? AppTheme.accentRed : Colors.white,
+              color: voiceService.isListening
+                  ? AppTheme.accentRed
+                  : Colors.white,
               size: 18,
             ),
           ),
