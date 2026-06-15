@@ -116,6 +116,7 @@ class VoiceCommandService extends ChangeNotifier {
     }
     if (!_isAvailable || _isListening) return;
 
+    HapticFeedback.lightImpact();
     _isListening = true;
     _commandProcessed = false;
     _lastWords = '';
