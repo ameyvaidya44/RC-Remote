@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
 
@@ -274,7 +275,10 @@ class DeviceTile extends StatelessWidget {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              Navigator.pop(ctx);
+            },
             child: const Text(
               'CANCEL',
               style: TextStyle(color: Colors.white54),
@@ -282,6 +286,7 @@ class DeviceTile extends StatelessWidget {
           ),
           TextButton(
             onPressed: () {
+              HapticFeedback.mediumImpact();
               service.renameDevice(device.address, ctrl.text.trim());
               Navigator.pop(ctx);
             },
