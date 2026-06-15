@@ -21,7 +21,7 @@ class SmartRoverApp extends StatelessWidget {
         ),
       ],
       child: MaterialApp(
-        title: 'Smart Rover',
+        title: 'RC Remote',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           colorScheme: const ColorScheme.dark(
