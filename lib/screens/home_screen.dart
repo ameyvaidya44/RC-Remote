@@ -595,13 +595,21 @@ class _HomeScreenState extends State<HomeScreen> {
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      color: AppTheme.accentRed.withValues(alpha: 0.1),
+                      color: AppTheme.accentRed.withValues(
+                        alpha: voiceService.statusMessage == 'LISTENING...'
+                            ? 0.06
+                            : 0.15,
+                      ),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
                       _voiceDisplayLabel(voiceService.statusMessage),
-                      style: const TextStyle(
-                        color: AppTheme.accentRed,
+                      style: TextStyle(
+                        color: AppTheme.accentRed.withValues(
+                          alpha: voiceService.statusMessage == 'LISTENING...'
+                              ? 0.5
+                              : 1.0,
+                        ),
                         fontSize: 8,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 1.2,
