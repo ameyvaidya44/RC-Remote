@@ -106,6 +106,8 @@ class VoiceCommandService extends ChangeNotifier {
       _statusMessage = 'Microphone unavailable';
       _isAvailable = false;
       _isListening = false;
+      _commandProcessed = false;
+      _lastWords = '';
     }
     notifyListeners();
   }
