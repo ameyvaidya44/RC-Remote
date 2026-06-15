@@ -39,6 +39,7 @@ class BluetoothService extends ChangeNotifier {
   Map<String, String> _aliases = {};
 
   StreamSubscription<BluetoothDiscoveryResult>? _discoverySubscription;
+  StreamSubscription? _connectionInputSubscription;
   bool _isDiscovering = false;
 
   // Initialization
@@ -177,7 +178,8 @@ class BluetoothService extends ChangeNotifier {
       _connectionState = BtConnectionState.connected;
       notifyListeners();
 
-      conn.input?.listen(
+      _connectionInputSubscription?.cancel();
+      _connectionInputSubscription = conn.input?.listen(
         null,
         onDone: () => _onDisconnected(),
         onError: (e) {
@@ -187,6 +189,7 @@ class BluetoothService extends ChangeNotifier {
       );
     } catch (e) {
       debugPrint('BluetoothService.connect error: $e');
+      _connectionInputSubscription?.cancel();
       _connectionState = BtConnectionState.disconnected;
       notifyListeners();
     }
@@ -200,6 +203,7 @@ class BluetoothService extends ChangeNotifier {
   }
 
   void _onDisconnected() {
+    _connectionInputSubscription?.cancel();
     _connection = null;
     _connectedDevice = null;
     _connectionState = BtConnectionState.disconnected;
@@ -257,6 +261,7 @@ class BluetoothService extends ChangeNotifier {
   @override
   void dispose() {
     _discoverySubscription?.cancel();
+    _connectionInputSubscription?.cancel();
     _connection?.finish();
     super.dispose();
   }
