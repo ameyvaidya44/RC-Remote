@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
 import '../bluetooth/bluetooth_service.dart';
@@ -148,8 +149,9 @@ class VoiceCommandService extends ChangeNotifier {
         debugPrint(
           'VoiceCommandService.match mode: phrase="${entry.key}" mode=${entry.value}',
         );
+        HapticFeedback.mediumImpact();
         unawaited(_btService.setMode(entry.value));
-        _statusMessage = '';
+        _statusMessage = _modeName(entry.value);
         notifyListeners();
         return;
       }
@@ -208,6 +210,17 @@ class VoiceCommandService extends ChangeNotifier {
         return 'RIGHT';
       default:
         return '';
+    }
+  }
+
+  static String _modeName(RobotMode mode) {
+    switch (mode) {
+      case RobotMode.manual:
+        return 'MANUAL MODE';
+      case RobotMode.obstacle:
+        return 'OBSTACLE AVOIDING';
+      case RobotMode.follow:
+        return 'HUMAN FOLLOWING';
     }
   }
 
