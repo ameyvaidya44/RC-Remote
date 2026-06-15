@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
 import '../bluetooth/bluetooth_service.dart';
@@ -96,6 +97,7 @@ class VoiceCommandService extends ChangeNotifier {
     }
     if (!_isAvailable || _isListening) return;
 
+    HapticFeedback.lightImpact();
     _isListening = true;
     _commandProcessed = false;
     _lastWords = '';
