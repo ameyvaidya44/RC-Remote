@@ -76,7 +76,10 @@ class _BluetoothSheetState extends State<BluetoothSheet> {
                         builder: (_, bt, _) => IconButton(
                           onPressed: bt.isDiscovering
                               ? null
-                              : bt.startDiscovery,
+                              : () {
+                                  HapticFeedback.lightImpact();
+                                  bt.startDiscovery();
+                                },
                           icon: bt.isDiscovering
                               ? const SizedBox(
                                   width: 16,
