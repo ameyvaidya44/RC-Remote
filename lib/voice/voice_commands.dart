@@ -103,9 +103,11 @@ class VoiceCommandService extends ChangeNotifier {
       );
     } catch (e) {
       debugPrint('VoiceCommandService.initialise error: $e');
-      _statusMessage = 'Voice unavailable';
+      _statusMessage = 'Microphone unavailable';
       _isAvailable = false;
       _isListening = false;
+      _commandProcessed = false;
+      _lastWords = '';
     }
     notifyListeners();
   }
@@ -116,6 +118,7 @@ class VoiceCommandService extends ChangeNotifier {
     }
     if (!_isAvailable || _isListening) return;
 
+    HapticFeedback.lightImpact();
     _isListening = true;
     _commandProcessed = false;
     _lastWords = '';
@@ -147,7 +150,7 @@ class VoiceCommandService extends ChangeNotifier {
       );
     } catch (e) {
       debugPrint('VoiceCommandService.startListening error: $e');
-      _statusMessage = 'Listening failed';
+      _statusMessage = 'Unable to listen';
       _isListening = false;
       notifyListeners();
     }
@@ -158,6 +161,7 @@ class VoiceCommandService extends ChangeNotifier {
     _actionTimer?.cancel();
     await _speech.stop();
     _isListening = false;
+    _statusMessage = '';
     debugPrint('VoiceCommandService.stopListening: stopped');
     notifyListeners();
   }
@@ -212,7 +216,7 @@ class VoiceCommandService extends ChangeNotifier {
       }
     }
 
-    _statusMessage = 'No voice detected';
+    _statusMessage = 'No command recognized';
     debugPrint('VoiceCommandService.match none: words="$words"');
     notifyListeners();
   }
